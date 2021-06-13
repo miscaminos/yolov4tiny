@@ -18,28 +18,22 @@ def index_page(request):
 
 @api_view(["POST"])
 def yolov4tiny_outcome(request):
-    print("hello")
     try:
+        # classes(list sent as a string) where image's sign language word belongs to
         classes_str = request.data.get('classes', None)
         classes = eval(classes_str)
-        #how to decode/encode image:
-        #https://gist.github.com/kylehounslow/767fb72fde2ebdd010a0bf4242371594
+        # image decode
         image = request.data.get('image_serialized', None)
         image_64 = base64.b64decode(image)
-
         nparr = np.frombuffer(image_64, dtype=np.uint8)
-
         nparr = nparr.reshape(720, 1280, 3)
 
-
+        #fields to check input data are valid
         fields = [classes_str, image]
 
         if not None in fields:
-            print('if start')
-            # image_deserialized is not a path, is that okay?
-            #img = cv2.imread(nparr)
             img = nparr
-            # 전달받은 이미지는 원본 이미지 사이즈로 resize필요?
+            # image resize
             img = cv2.resize(img, (1280, 720))
 
             boxes = []
@@ -58,21 +52,18 @@ def yolov4tiny_outcome(request):
             for output in layerOutputs:
                 for detection in output:
                     score = detection[5:]
-                    #print("score: ",score)
                     class_id = np.argmax(score)
-                    #print("class_id: ",class_id)
                     confidence = score[class_id]
-                    #print("confidence: ",confidence)
+
                     if confidence > 0.5:
                         center_x = int(detection[0] * width)
                         center_y = int(detection[1] * height)
 
                         w = int(detection[2] * width)
                         h = int(detection[3] * height)
-                        # print('w: ' ,w,'h: ',h)
+
                         x = int(center_x - w / 2)
                         y = int(center_y - h / 2)
-                        # print('x: ' ,x,'y: ',y)
 
                         boxes.append([x, y, w, h])
                         confidences.append((float(confidence)))
@@ -81,13 +72,12 @@ def yolov4tiny_outcome(request):
             indexes = cv2.dnn.NMSBoxes(boxes, confidences, 0.8, 0.4)
             print (indexes)
             if len(indexes) > 0:
-                #print(" in indexes")
                 for i in indexes.flatten():
                     x, y, w, h = boxes[i]
                     label = str(classes[class_ids[i]])
                     confidence = str(round(confidences[i], 5))
 
-            # JSON형태로 저장
+            # save output of yolov4 tiny model as json type
             result = {
                 'word_index': label,
                 'box_coord': [x, y, w, h],
