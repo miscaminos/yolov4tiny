@@ -27,7 +27,7 @@ def yolov4tiny_outcome(request):
         image_64 = base64.b64decode(image)
         nparr = np.frombuffer(image_64, dtype=np.uint8)
         nparr = nparr.reshape(720, 1280, 3)
-
+       
         #fields to check input data are valid
         fields = [classes_str, image]
 
