@@ -4,7 +4,8 @@ from rest_framework.response import Response
 import cv2, json
 import numpy as np
 import base64
-
+import secrets
+from django.core.files.base import ContentFile
 
 # Create your views here.
 @api_view(['GET'])
@@ -22,19 +23,31 @@ def yolov4tiny_outcome(request):
         # classes(list sent as a string) where image's sign language word belongs to
         classes_str = request.data.get('classes', None)
         classes = eval(classes_str)
-        # image decode
+
+        # when inputting image via http: convert from dataURL to image
         image = request.data.get('image_serialized', None)
-        image_64 = base64.b64decode(image)
-        nparr = np.frombuffer(image_64, dtype=np.uint8)
-        nparr = nparr.reshape(720, 1280, 3)
+        _format, _image_url = image.split(';base64,')
+        image_64 = base64.b64decode(_image_url)
+        #from base64 to OpenCV Image
+        image_arr = np.frombuffer(image_64, dtype="int16")  # im_arr is one-dim Numpy array
+        nparr = cv2.imdecode(image_arr, flags=cv2.IMREAD_COLOR)
+        print(nparr.shape)
+
+        # # when inputting image locally: image decode
+        # image = request.data.get('image_serialized', None)
+        # image_64 = base64.b64decode(image)
+        # nparr = np.frombuffer(image_64, dtype=np.uint8)
+        # nparr = nparr.reshape(720, 1280, 3)
        
         #fields to check input data are valid
         fields = [classes_str, image]
 
         if not None in fields:
             img = nparr
+
             # image resize
             img = cv2.resize(img, (1280, 720))
+            #img = cv2.resize(img, (640, 360))
 
             boxes = []
             confidences = []
@@ -95,5 +108,5 @@ def yolov4tiny_outcome(request):
             'error': '2',
             "message": str(e)
         }
-
+    print(json_to_spring)
     return Response(json_to_spring)
